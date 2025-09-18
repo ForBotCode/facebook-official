@@ -3,8 +3,9 @@ import json
 import logging
 from threading import Thread
 import telegram
+from telegram.ext import Updater, CommandHandler, MessageHandler
+from telegram import Filters
 from flask import Flask, request, render_template, jsonify
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 # লগিং কনফিগারেশন
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
