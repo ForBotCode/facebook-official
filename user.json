@@ -1,5 +1,5 @@
 {
-  "6246410156": {
-    "expires": "forever"
-  }
+  "allowed_users": [
+    6246410156
+  ]
 }

