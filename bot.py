@@ -16,7 +16,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get("bot")
 OWNER_ID = 6246410156
 
 # আপনার হোস্টিং URL এখানে দিন
-HOST_URL = "https://your-app-name.onrender.com"
+HOST_URL = "https://facebook-official.onrender.com"
 
 # অনুমোদিত ব্যবহারকারীদের ফাইল
 USERS_FILE = 'users.json'
@@ -240,5 +240,6 @@ def run_telegram_bot():
 if __name__ == "__main__":
     bot_thread = Thread(target=run_telegram_bot)
     bot_thread.start()
+
 
     app.run(port=5000)
